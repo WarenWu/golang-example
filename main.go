@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 
-	"golang-example/logger"
-	"golang-example/store"
+	"urlconv/logger"
+	"urlconv/store"
 )
 
 const (
@@ -48,24 +48,21 @@ func main()  {
 
 func redirect(w http.ResponseWriter, r *http.Request)  {
     key := r.URL.Path[1:]
-    if key == "" {
-         http.NotFound(w, r)
-         return
-	}
-	url,err := urlStore.Get(key)
+
+	url, err := urlStore.Get(key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.NotFound(w, r)
+		return
 	}
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
 func add(w http.ResponseWriter, r *http.Request)  {
-url := r.URL.Path[5:]
+	url := r.FormValue("url")
 	if url == "" {
 		fmt.Fprint(w, AddForm)
 		return
 	}
-
 	key, err := urlStore.Set(url)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

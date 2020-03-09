@@ -7,8 +7,8 @@ import (
 	"os"
 	"sync"
 
-	"golang-example/global"
-	"golang-example/logger"
+	"urlconv/global"
+	"urlconv/logger"
 )
 
 type URLStore struct{
@@ -19,26 +19,24 @@ type URLStore struct{
 }
 
 type record struct{
-    key, url string
+    Key, Url string
 }
-
-var count = 0
 
 func New(fileName string) (*URLStore, error) {
 	var s URLStore
 	var err error
 	s.urls = make(map[string]string)
-
+	s.saveCh = make(chan record)
 	s.file, err = os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, os.ModePerm)
     if err != nil {
 		panic(err.Error())
 	}
+
 	err = s.load()
 
 	for i := 0;i < global.NCPU ;i++  {
 		go func() {
 			s.save()
-			logger.DebugLogger.Printf("New: s:%#v, ch%#v\n",s,s.saveCh)
 		}()
 	}
 	return &s, err
@@ -46,31 +44,29 @@ func New(fileName string) (*URLStore, error) {
 
 func (s *URLStore)Get(key string) (string, error) {
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if url, ok := s.urls[key]; ok {
-        return url,nil
+		return url, nil
 	}
-	s.mutex.Unlock()
-	return "", errors.New("The key have not relative url!")
+	return "", errors.New("The Key have not relative Url!")
 	
 }
 
 func (s *URLStore)Set(url string) (string, error){
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	key := genKey(len(s.urls))
 	if _, ok := s.urls[key]; ok {
-	return "",errors.New("The key url relatived has existed!")
+	return "",errors.New("The Key Url relatived has existed!")
 	}
 	s.urls[key] = url
-	s.mutex.Unlock()
 	go func() {
-		s.saveCh <- record{key:key, url:url}
-		logger.DebugLogger.Printf("Set: s:%#v, ch%#v\n",s,s.saveCh)
+		s.saveCh <- record{Key: key, Url:url}
 	}()
 	return key, nil
 }
 
 func (s *URLStore)save() {
-	logger.DebugLogger.Printf("save%d entry: s:%#v, ch%#v\n",count, s, s.saveCh)
 	for {
 		r := <-s.saveCh
 		e := json.NewEncoder(s.file)
@@ -79,7 +75,6 @@ func (s *URLStore)save() {
 			logger.RunLogger.Println(err.Error())
 		}
 	}
-	logger.DebugLogger.Printf("save%d exit\n",count)
 }
 
 func (s *URLStore)load() error {
@@ -88,7 +83,7 @@ func (s *URLStore)load() error {
 	for err == nil {
 		var r record 
 		if err = d.Decode(&r); err == nil {
-			s.urls[r.key] = r.url
+			s.urls[r.Key] = r.Url
 		}
 	}
 	if err == io.EOF {
