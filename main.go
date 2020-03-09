@@ -35,18 +35,18 @@ func main()  {
 	flag.Parse()
     if err != nil {
     	log.Println(err.Error())
-    	logger.FLogger.Println(err.Error())
+    	logger.RunLogger.Println(err.Error())
 	}
 
-	http.HandleFunc("/", Redirect)
-	http.HandleFunc("/add/", Add)
+	http.HandleFunc("/", redirect)
+	http.HandleFunc("/add/", add)
 	err = http.ListenAndServe(*listenAddr,nil)
 	if err != nil {
 		log.Fatalln("Start Server Error:", err.Error())
 	}
 }
 
-func Redirect(w http.ResponseWriter, r *http.Request)  {
+func redirect(w http.ResponseWriter, r *http.Request)  {
     key := r.URL.Path[1:]
     if key == "" {
          http.NotFound(w, r)
@@ -59,7 +59,7 @@ func Redirect(w http.ResponseWriter, r *http.Request)  {
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
-func Add(w http.ResponseWriter, r *http.Request)  {
+func add(w http.ResponseWriter, r *http.Request)  {
 url := r.URL.Path[5:]
 	if url == "" {
 		fmt.Fprint(w, AddForm)

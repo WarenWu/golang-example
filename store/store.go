@@ -22,6 +22,8 @@ type record struct{
     key, url string
 }
 
+var count = 0
+
 func New(fileName string) (*URLStore, error) {
 	var s URLStore
 	var err error
@@ -34,9 +36,10 @@ func New(fileName string) (*URLStore, error) {
 	err = s.load()
 
 	for i := 0;i < global.NCPU ;i++  {
-		go func(s *URLStore) {
+		go func() {
 			s.save()
-		}(&s)
+			logger.DebugLogger.Printf("New: s:%#v, ch%#v\n",s,s.saveCh)
+		}()
 	}
 	return &s, err
 }
@@ -61,19 +64,22 @@ func (s *URLStore)Set(url string) (string, error){
 	s.mutex.Unlock()
 	go func() {
 		s.saveCh <- record{key:key, url:url}
+		logger.DebugLogger.Printf("Set: s:%#v, ch%#v\n",s,s.saveCh)
 	}()
 	return key, nil
 }
 
 func (s *URLStore)save() {
+	logger.DebugLogger.Printf("save%d entry: s:%#v, ch%#v\n",count, s, s.saveCh)
 	for {
 		r := <-s.saveCh
 		e := json.NewEncoder(s.file)
 		err := e.Encode(r)
 		if err != nil {
-			logger.FLogger.Println(err.Error())
+			logger.RunLogger.Println(err.Error())
 		}
 	}
+	logger.DebugLogger.Printf("save%d exit\n",count)
 }
 
 func (s *URLStore)load() error {
